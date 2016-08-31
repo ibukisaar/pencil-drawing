@@ -1,5 +1,6 @@
 #include "Pencil.h"
 
+// 修剪矩阵，只保留和非零的子矩阵
 void Pencil::CutMatrix(const Mat1f &mat, OutputArray result) {
 	int top = 0, left = 0;
 
@@ -9,6 +10,7 @@ void Pencil::CutMatrix(const Mat1f &mat, OutputArray result) {
 	Mat1f { mat, Range { top, mat.rows - top }, Range { left, mat.cols - left } }.copyTo(result);
 }
 
+// 直方图平滑处理
 void Pencil::Smooth(float *hist) {
 	float src[256];
 	memcpy(src, hist, 256 * sizeof(float));
@@ -20,6 +22,7 @@ void Pencil::Smooth(float *hist) {
 	hist[255] = (src[254] + src[255]) / 2;
 }
 
+// 直方图归一化处理
 void Pencil::Normalize(float *hist) {
 	float sum = 0;
 	for (int i = 0; i < 256; i++) {
@@ -31,6 +34,7 @@ void Pencil::Normalize(float *hist) {
 	}
 }
 
+// 概率密度直方图转积分直方图
 void Pencil::ToIntegral(float *hist) {
 	float sum = 0;
 	for (int i = 0; i < 256; i++) {
@@ -39,6 +43,7 @@ void Pencil::ToIntegral(float *hist) {
 	}
 }
 
+// 根据源直方图和目标直方图，得到灰度映射表
 void Pencil::CreateGrayMap(float *srcHist, float *dstHist, uchar *outputGrayMap) {
 	Smooth(srcHist);
 	Smooth(dstHist);
@@ -92,6 +97,7 @@ inline float Pencil::P(float x) {
 	return W1 * P1(x) + W2 * P2(x) + W3 * P3(x);
 }
 
+// 步骤一：边缘检测
 void Pencil::Step1() {
 	cvtColor(src, sobelMat, COLOR_BGR2GRAY);
 	sobelMat.convertTo(sobelMat, CV_32F, 1. / 255);
@@ -105,12 +111,14 @@ void Pencil::Step1() {
 	addWeighted(gx, 0.5, gy, 0.5, 0, sobelMat);
 }
 
+// 步骤二：进行8方向的运动模糊，即卷积运算
 void Pencil::Step2() {
 	for (int i = 0; i < CK::rotationCount; i++) {
 		filter2D(sobelMat, responseImages[i], CV_32F, CK::convolutionKernels[i]);
 	}
 }
 
+// 步骤三：对每个响应图的对应像素，值最大的响应图把该像素设置成sobelMat对应的像素值，其他响应图把该像素设为0
 void Pencil::Step3() {
 	float *p = (float *) sobelMat.data;
 	float *p2[CK::rotationCount];
@@ -136,6 +144,7 @@ void Pencil::Step3() {
 	}
 }
 
+// 步骤四：分别对响应图进行对应方向的运动模糊，然后把它们叠加
 void Pencil::Step4() {
 	sobelMat.setTo(Scalar::all(0));
 
@@ -147,6 +156,7 @@ void Pencil::Step4() {
 	sobelMat.convertTo(sobelMat, CV_8U, -200, 255);
 }
 
+// 修改颜色
 void Pencil::ColorMap(OutputArray result) {
 	const int lightChannelIndex = 2;
 	const bool isHls = 0;
@@ -226,6 +236,7 @@ Mat1f Pencil::CK::convolutionKernels[Pencil::CK::rotationCount] { };
 
 Pencil::CK Pencil::ck { };
 
+// 初始化8方向卷积核
 Pencil::CK::CK() {
 	Mat rotationMat = getRotationMatrix2D({ (float) CK::ckRange, (float) CK::ckRange }, 180. / CK::rotationCount, 1);
 

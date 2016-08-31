@@ -42,6 +42,8 @@ private:
 	void ColorMap(OutputArray result);
 
 public:
+	// 彩色的铅笔画
 	static void ColorDraw(InputArray src, OutputArray dst);
+	// 只有线条的铅笔画
 	static void Draw(InputArray src, OutputArray dst);
 };
